@@ -21,9 +21,14 @@ export default function AdminPage() {
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/stats?key=${encodeURIComponent(adminKey)}`)
-      if (!res.ok) {
+      if (res.status === 401) {
         setAuthed(false)
         setMessage('Incorrect password.')
+        return
+      }
+      if (!res.ok) {
+        setAuthed(false)
+        setMessage(`Server error (${res.status}) — check your Supabase environment variables in Vercel.`)
         return
       }
       const data = await res.json()
