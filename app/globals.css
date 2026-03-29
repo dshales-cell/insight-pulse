@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --brand-purple: #3B1F5E;
+  --brand-pink: #C2185B;
+  --brand-light: #F3E8F7;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #FAFAFA;
+  color: #1A1A2E;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Smooth transitions on interactive elements ── */
+button, a {
+  transition: all 0.15s ease;
+}
+
+/* ── Focus ring for accessibility ── */
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--brand-pink);
+  outline-offset: 2px;
+}
+
+/* ── Ranked choice drag handle cursor ── */
+.ranked-item {
+  cursor: pointer;
+  user-select: none;
+}
