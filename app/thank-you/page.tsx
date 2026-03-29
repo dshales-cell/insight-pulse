@@ -50,12 +50,12 @@ function ThankYouContent() {
       {/* Confirmation */}
       <div className="text-6xl mb-6">{alreadyDone ? '👀' : '🎉'}</div>
       <h1 className="text-3xl font-bold text-brand-purple mb-3">
-        {alreadyDone ? 'You've already responded!' : 'Thank you!'}
+        {alreadyDone ? "You've already responded!" : 'Thank you!'}
       </h1>
       <p className="text-gray-600 leading-relaxed mb-8">
         {alreadyDone
-          ? 'Looks like you've already completed this Pulse Check. Come back next week for the next one.'
-          : 'Your response has been recorded. You're helping build a global picture of women\'s health and wellbeing — that really matters.'}
+          ? "Looks like you've already completed this Pulse Check. Come back next week for the next one."
+          : "Your response has been recorded. You're helping build a global picture of women's health and wellbeing — that really matters."}
       </p>
 
       {!alreadyDone && (
@@ -75,9 +75,9 @@ function ThankYouContent() {
         {submitState === 'success' ? (
           <div className="text-center py-4">
             <div className="text-4xl mb-3">✉️</div>
-            <h3 className="text-lg font-bold text-gray-800 mb-2">You're signed up!</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">You&apos;re signed up!</h3>
             <p className="text-sm text-gray-500">
-              We'll send you the survey findings and a weekly newsletter. You can unsubscribe at any time.
+              We&apos;ll send you the survey findings and a weekly newsletter. You can unsubscribe at any time.
             </p>
           </div>
         ) : (
@@ -88,8 +88,8 @@ function ThankYouContent() {
                   Become a Founding Participant
                 </h3>
                 <p className="text-sm text-gray-500">
-                  Sign up for our free newsletter and we'll send you the survey findings,
-                  plus weekly insights on women's health and wellbeing.
+                  Sign up for our free newsletter and we&apos;ll send you the survey findings,
+                  plus weekly insights on women&apos;s health and wellbeing.
                   <strong className="text-gray-700"> Completely optional.</strong>
                 </p>
               </div>

@@ -36,7 +36,7 @@ export const pulseChecks: PulseCheck[] = [
     id: 1,
     title: 'Pulse Check 1',
     subtitle: 'The Core Mandate',
-    intro: 'Help us understand the state of society's support for health and wellbeing — and what needs to change.',
+    intro: "Help us understand the state of society's support for health and wellbeing — and what needs to change.",
     questions: [
       {
         id: 'pc1_q1_pulse_check',
