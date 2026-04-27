@@ -13,6 +13,14 @@ interface PulseCheckMeta {
   created_at: string
 }
 
+interface EditableQuestion {
+  id?: string          // present when editing an existing question
+  label: string
+  text: string
+  type: QuestionType
+  options: string[]
+}
+
 interface Stats {
   pulseChecks: PulseCheckMeta[]
   responseCounts: Record<number, number>
@@ -21,76 +29,184 @@ interface Stats {
   activePulseCheck: number | null
 }
 
-interface NewQuestion {
-  label: string
-  text: string
-  type: QuestionType
-  options: string[]
-}
-
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-  scale: '5-point Scale',
+  scale:         '5-point Scale',
   ranked_choice: 'Ranked Choice',
-  multi_select: 'Multi-select (tick all that apply)',
+  multi_select:  'Multi-select (tick all that apply)',
   single_choice: 'Single Choice',
-  binary: 'Yes / No',
+  binary:        'Yes / No',
 }
 
-const TYPES_WITH_OPTIONS: QuestionType[] = ['scale', 'ranked_choice', 'multi_select', 'single_choice']
+const TYPES_WITH_CUSTOM_OPTIONS: QuestionType[] = ['ranked_choice', 'multi_select', 'single_choice']
 
-// ─── Create Pulse Check Form ───────────────────────────────────────────────────
+// ─── Shared: Question Editor ───────────────────────────────────────────────────
 
-function CreatePulseCheckForm({ adminKey, onCreated }: { adminKey: string; onCreated: (id: number) => void }) {
-  const [title, setTitle] = useState('')
-  const [subtitle, setSubtitle] = useState('')
-  const [intro, setIntro] = useState('')
-  const [questions, setQuestions] = useState<NewQuestion[]>([
-    { label: '', text: '', type: 'scale', options: ['', '', '', '', ''] },
-  ])
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-
-  function addQuestion() {
-    setQuestions((prev) => [...prev, { label: '', text: '', type: 'scale', options: ['', '', '', '', ''] }])
-  }
-
-  function removeQuestion(i: number) {
-    setQuestions((prev) => prev.filter((_, idx) => idx !== i))
-  }
-
-  function updateQuestion(i: number, field: keyof NewQuestion, value: string | string[] | QuestionType) {
-    setQuestions((prev) => prev.map((q, idx) => {
+function QuestionList({
+  questions,
+  onChange,
+}: {
+  questions: EditableQuestion[]
+  onChange: (questions: EditableQuestion[]) => void
+}) {
+  function update(i: number, field: keyof EditableQuestion, value: string | string[] | QuestionType) {
+    const next = questions.map((q, idx) => {
       if (idx !== i) return q
       if (field === 'type') {
         const type = value as QuestionType
-        const options = type === 'binary' ? ['Yes', 'No']
-          : type === 'scale' ? ['', '', '', '', '']
-          : ['', '']
+        const options =
+          type === 'binary'        ? ['Yes', 'No'] :
+          type === 'scale'         ? ['', '', '', '', ''] :
+          q.options.length >= 2    ? q.options : ['', '']
         return { ...q, type, options }
       }
       return { ...q, [field]: value }
-    }))
+    })
+    onChange(next)
   }
 
   function updateOption(qi: number, oi: number, value: string) {
-    setQuestions((prev) => prev.map((q, idx) => {
+    const next = questions.map((q, idx) => {
       if (idx !== qi) return q
       const options = [...q.options]
       options[oi] = value
       return { ...q, options }
-    }))
+    })
+    onChange(next)
   }
 
   function addOption(qi: number) {
-    setQuestions((prev) => prev.map((q, idx) => idx === qi ? { ...q, options: [...q.options, ''] } : q))
+    onChange(questions.map((q, idx) => idx === qi ? { ...q, options: [...q.options, ''] } : q))
   }
 
   function removeOption(qi: number, oi: number) {
-    setQuestions((prev) => prev.map((q, idx) => {
+    onChange(questions.map((q, idx) => {
       if (idx !== qi) return q
       return { ...q, options: q.options.filter((_, i) => i !== oi) }
     }))
   }
+
+  function removeQuestion(i: number) {
+    onChange(questions.filter((_, idx) => idx !== i))
+  }
+
+  function addQuestion() {
+    onChange([...questions, { label: '', text: '', type: 'scale', options: ['', '', '', '', ''] }])
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Questions</p>
+
+      {questions.map((q, qi) => (
+        <div key={qi} className="border-2 border-gray-100 rounded-xl p-4 space-y-3 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-brand-purple">Question {qi + 1}</span>
+            {questions.length > 1 && (
+              <button type="button" onClick={() => removeQuestion(qi)}
+                className="text-xs text-red-400 hover:text-red-600">
+                Remove
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">
+                Label <span className="text-gray-400">(e.g. &quot;The Priority&quot;)</span>
+              </label>
+              <input value={q.label} onChange={(e) => update(qi, 'label', e.target.value)} required
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:border-brand-purple focus:outline-none"
+                placeholder="The Priority" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Response type</label>
+              <select value={q.type} onChange={(e) => update(qi, 'type', e.target.value as QuestionType)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:border-brand-purple focus:outline-none">
+                {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((t) => (
+                  <option key={t} value={t}>{QUESTION_TYPE_LABELS[t]}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Question text</label>
+            <textarea value={q.text} onChange={(e) => update(qi, 'text', e.target.value)} required rows={2}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:border-brand-purple focus:outline-none resize-none"
+              placeholder="What do you think about…?" />
+          </div>
+
+          {/* Options by type */}
+          {q.type === 'binary' && (
+            <p className="text-xs text-gray-400 italic">Fixed options: Yes / No</p>
+          )}
+
+          {q.type === 'scale' && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-2">Scale labels (5 required, first → last)</label>
+              <div className="space-y-1.5">
+                {q.options.map((opt, oi) => (
+                  <div key={oi} className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-4">{oi + 1}</span>
+                    <input value={opt} onChange={(e) => updateOption(qi, oi, e.target.value)} required
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:border-brand-purple focus:outline-none"
+                      placeholder={oi === 0 ? 'e.g. Strongly agree' : oi === 4 ? 'e.g. Strongly disagree' : ''} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {TYPES_WITH_CUSTOM_OPTIONS.includes(q.type) && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-2">Options</label>
+              <div className="space-y-1.5">
+                {q.options.map((opt, oi) => (
+                  <div key={oi} className="flex items-center gap-2">
+                    <input value={opt} onChange={(e) => updateOption(qi, oi, e.target.value)} required
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:border-brand-purple focus:outline-none"
+                      placeholder={`Option ${oi + 1}`} />
+                    {q.options.length > 2 && (
+                      <button type="button" onClick={() => removeOption(qi, oi)}
+                        className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={() => addOption(qi)}
+                  className="text-xs text-brand-purple hover:underline mt-1">
+                  + Add option
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      <button type="button" onClick={addQuestion}
+        className="w-full border-2 border-dashed border-gray-200 rounded-xl py-3 text-sm text-gray-400 hover:border-brand-purple hover:text-brand-purple transition-all">
+        + Add question
+      </button>
+    </div>
+  )
+}
+
+// ─── Create Pulse Check Form ───────────────────────────────────────────────────
+
+function CreatePulseCheckForm({
+  adminKey,
+  onCreated,
+}: {
+  adminKey: string
+  onCreated: (id: number) => void
+}) {
+  const [title, setTitle] = useState('')
+  const [subtitle, setSubtitle] = useState('')
+  const [intro, setIntro] = useState('')
+  const [questions, setQuestions] = useState<EditableQuestion[]>([
+    { label: '', text: '', type: 'scale', options: ['', '', '', '', ''] },
+  ])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -100,21 +216,11 @@ function CreatePulseCheckForm({ adminKey, onCreated }: { adminKey: string; onCre
       const res = await fetch('/api/admin/create-pulse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: adminKey,
-          title,
-          subtitle,
-          intro,
-          questions: questions.map((q) => ({
-            ...q,
-            options: q.type === 'binary' ? ['Yes', 'No'] : q.options.filter(Boolean),
-          })),
-        }),
+        body: JSON.stringify({ key: adminKey, title, subtitle, intro, questions }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to create')
       onCreated(data.pulseCheckId)
-      // Reset form
       setTitle(''); setSubtitle(''); setIntro('')
       setQuestions([{ label: '', text: '', type: 'scale', options: ['', '', '', '', ''] }])
     } catch (err: unknown) {
@@ -126,120 +232,146 @@ function CreatePulseCheckForm({ adminKey, onCreated }: { adminKey: string; onCre
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Pulse Check details */}
       <div className="space-y-3">
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Title <span className="text-gray-400 normal-case font-normal">(e.g. "Pulse Check 5")</span></label>
+          <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
+            Title <span className="text-gray-400 normal-case font-normal">(e.g. &quot;Pulse Check 5&quot;)</span>
+          </label>
           <input value={title} onChange={(e) => setTitle(e.target.value)} required
             className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-brand-purple focus:outline-none"
             placeholder="Pulse Check 5" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Subtitle <span className="text-gray-400 normal-case font-normal">(short theme name)</span></label>
+          <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
+            Subtitle <span className="text-gray-400 normal-case font-normal">(short theme name)</span>
+          </label>
           <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} required
             className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-brand-purple focus:outline-none"
             placeholder="The Workplace" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Intro text <span className="text-gray-400 normal-case font-normal">(shown at top of survey)</span></label>
+          <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
+            Intro text <span className="text-gray-400 normal-case font-normal">(shown at top of survey)</span>
+          </label>
           <textarea value={intro} onChange={(e) => setIntro(e.target.value)} required rows={2}
             className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-brand-purple focus:outline-none resize-none"
             placeholder="Tell us about your experience in the workplace…" />
         </div>
       </div>
 
-      {/* Questions */}
-      <div className="space-y-4">
-        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Questions</p>
-        {questions.map((q, qi) => (
-          <div key={qi} className="border-2 border-gray-100 rounded-xl p-4 space-y-3 bg-gray-50">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-brand-purple">Question {qi + 1}</span>
-              {questions.length > 1 && (
-                <button type="button" onClick={() => removeQuestion(qi)}
-                  className="text-xs text-red-400 hover:text-red-600">Remove</button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Label <span className="text-gray-400">(short tag, e.g. "The Priority")</span></label>
-                <input value={q.label} onChange={(e) => updateQuestion(qi, 'label', e.target.value)} required
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:border-brand-purple focus:outline-none"
-                  placeholder="The Priority" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Response type</label>
-                <select value={q.type} onChange={(e) => updateQuestion(qi, 'type', e.target.value as QuestionType)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:border-brand-purple focus:outline-none">
-                  {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((t) => (
-                    <option key={t} value={t}>{QUESTION_TYPE_LABELS[t]}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Question text</label>
-              <textarea value={q.text} onChange={(e) => updateQuestion(qi, 'text', e.target.value)} required rows={2}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:border-brand-purple focus:outline-none resize-none"
-                placeholder="What do you think about…?" />
-            </div>
-
-            {/* Options */}
-            {q.type === 'binary' && (
-              <p className="text-xs text-gray-400 italic">Fixed options: Yes / No</p>
-            )}
-            {q.type === 'scale' && (
-              <div>
-                <label className="block text-xs text-gray-500 mb-2">Scale labels (first → last, 5 required)</label>
-                <div className="space-y-1.5">
-                  {q.options.map((opt, oi) => (
-                    <div key={oi} className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 w-4">{oi + 1}</span>
-                      <input value={opt} onChange={(e) => updateOption(qi, oi, e.target.value)} required
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:border-brand-purple focus:outline-none"
-                        placeholder={oi === 0 ? 'e.g. Strongly agree' : oi === 4 ? 'e.g. Strongly disagree' : ''} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {TYPES_WITH_OPTIONS.includes(q.type) && q.type !== 'scale' && (
-              <div>
-                <label className="block text-xs text-gray-500 mb-2">Options</label>
-                <div className="space-y-1.5">
-                  {q.options.map((opt, oi) => (
-                    <div key={oi} className="flex items-center gap-2">
-                      <input value={opt} onChange={(e) => updateOption(qi, oi, e.target.value)} required
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:border-brand-purple focus:outline-none"
-                        placeholder={`Option ${oi + 1}`} />
-                      {q.options.length > 2 && (
-                        <button type="button" onClick={() => removeOption(qi, oi)}
-                          className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
-                      )}
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => addOption(qi)}
-                    className="text-xs text-brand-purple hover:underline mt-1">+ Add option</button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-
-        <button type="button" onClick={addQuestion}
-          className="w-full border-2 border-dashed border-gray-200 rounded-xl py-3 text-sm text-gray-400 hover:border-brand-purple hover:text-brand-purple transition-all">
-          + Add question
-        </button>
-      </div>
+      <QuestionList questions={questions} onChange={setQuestions} />
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
 
       <button type="submit" disabled={saving}
         className="w-full bg-brand-purple text-white font-semibold py-3 rounded-xl text-sm hover:bg-opacity-90 disabled:opacity-50">
-        {saving ? 'Creating…' : 'Create Pulse Check →'}
+        {saving ? 'Creating…' : 'Create Survey →'}
       </button>
+    </form>
+  )
+}
+
+// ─── Edit Pulse Check Form ─────────────────────────────────────────────────────
+
+function EditPulseCheckForm({
+  pulseId,
+  adminKey,
+  onSaved,
+  onCancel,
+}: {
+  pulseId: number
+  adminKey: string
+  onSaved: () => void
+  onCancel: () => void
+}) {
+  const [title, setTitle] = useState('')
+  const [subtitle, setSubtitle] = useState('')
+  const [intro, setIntro] = useState('')
+  const [questions, setQuestions] = useState<EditableQuestion[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  // Load the existing pulse check data
+  useEffect(() => {
+    fetch(`/api/admin/pulse-detail?id=${pulseId}&key=${encodeURIComponent(adminKey)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.pulseCheck) {
+          setTitle(data.pulseCheck.title)
+          setSubtitle(data.pulseCheck.subtitle)
+          setIntro(data.pulseCheck.intro)
+          setQuestions(data.pulseCheck.questions.map((q: { id: string; label: string; text: string; type: QuestionType; options: string[] }) => ({
+            id: q.id,
+            label: q.label,
+            text: q.text,
+            type: q.type,
+            options: q.options,
+          })))
+        }
+      })
+      .catch(() => setError('Failed to load survey details'))
+      .finally(() => setLoading(false))
+  }, [pulseId, adminKey])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setSaving(true)
+    try {
+      const res = await fetch('/api/admin/update-pulse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: adminKey, id: pulseId, title, subtitle, intro, questions }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to save')
+      onSaved()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return <div className="py-8 text-center text-sm text-gray-400">Loading survey details…</div>
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Title</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} required
+            className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-brand-purple focus:outline-none" />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Subtitle</label>
+          <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} required
+            className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-brand-purple focus:outline-none" />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Intro text</label>
+          <textarea value={intro} onChange={(e) => setIntro(e.target.value)} required rows={2}
+            className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-brand-purple focus:outline-none resize-none" />
+        </div>
+      </div>
+
+      <QuestionList questions={questions} onChange={setQuestions} />
+
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+
+      <div className="flex gap-3">
+        <button type="button" onClick={onCancel}
+          className="flex-1 border-2 border-gray-200 text-gray-600 font-semibold py-3 rounded-xl text-sm hover:bg-gray-50">
+          Cancel
+        </button>
+        <button type="submit" disabled={saving}
+          className="flex-1 bg-brand-purple text-white font-semibold py-3 rounded-xl text-sm hover:bg-opacity-90 disabled:opacity-50">
+          {saving ? 'Saving…' : 'Save changes →'}
+        </button>
+      </div>
     </form>
   )
 }
@@ -253,6 +385,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [showAll, setShowAll] = useState(false)
 
   const fetchStats = useCallback(async (adminKey: string) => {
@@ -296,6 +429,7 @@ export default function AdminPage() {
   const visiblePulseChecks = showAll ? sortedPulseChecks : sortedPulseChecks.slice(0, 4)
   const hasMore = sortedPulseChecks.length > 4
 
+  // ── Login screen ──
   if (!authed) {
     return (
       <div className="max-w-md mx-auto px-4 py-20">
@@ -319,7 +453,7 @@ export default function AdminPage() {
             </button>
           </form>
           <div className="mt-4 text-center">
-            <a href={`mailto:${process.env.NEXT_PUBLIC_ADMIN_CONTACT_EMAIL || 'hello@womenshealth.world'}?subject=Insight%20Pulse%20Admin%20Password&body=Hi%2C%20could%20you%20share%20the%20Insight%20Pulse%20admin%20password%20please%3F`}
+            <a href={`mailto:hello@womenshealth.world?subject=Insight%20Pulse%20Admin%20Password&body=Hi%2C%20could%20you%20share%20the%20Insight%20Pulse%20admin%20password%20please%3F`}
               className="text-xs text-gray-400 hover:text-brand-purple underline">
               Forgot password? Email the admin →
             </a>
@@ -329,6 +463,40 @@ export default function AdminPage() {
     )
   }
 
+  // ── Edit mode — show just the edit form ──
+  if (editingId !== null) {
+    const pc = stats?.pulseChecks.find((p) => p.id === editingId)
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-10">
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => setEditingId(null)}
+            className="text-sm text-gray-400 hover:text-brand-purple">
+            ← Back to dashboard
+          </button>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <h2 className="text-lg font-bold text-brand-purple mb-1">
+            Edit: {pc?.title} — {pc?.subtitle}
+          </h2>
+          <p className="text-xs text-gray-400 mb-6">
+            Changes apply immediately to the live survey if this is the active pulse check.
+          </p>
+          <EditPulseCheckForm
+            pulseId={editingId}
+            adminKey={key}
+            onSaved={() => {
+              setEditingId(null)
+              setMessage('Survey updated successfully.')
+              fetchStats(key)
+            }}
+            onCancel={() => setEditingId(null)}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // ── Main dashboard ──
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
       <div className="flex items-center justify-between mb-8">
@@ -362,7 +530,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Pulse Check list */}
+      {/* Survey list */}
       <div className="space-y-3 mb-6">
         <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Surveys</h2>
 
@@ -371,20 +539,29 @@ export default function AdminPage() {
           const count = stats?.responseCounts?.[pc.id] ?? 0
           return (
             <div key={pc.id}
-              className={`bg-white border-2 rounded-xl p-4 flex items-center justify-between ${isActive ? 'border-brand-purple' : 'border-gray-200'}`}>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-gray-800">{pc.title}: {pc.subtitle}</span>
-                  {isActive && <span className="text-xs bg-brand-purple text-white px-2 py-0.5 rounded-full">LIVE</span>}
+              className={`bg-white border-2 rounded-xl p-4 ${isActive ? 'border-brand-purple' : 'border-gray-200'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-800">{pc.title}: {pc.subtitle}</span>
+                    {isActive && <span className="text-xs bg-brand-purple text-white px-2 py-0.5 rounded-full">LIVE</span>}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">{count} response{count !== 1 ? 's' : ''}</p>
                 </div>
-                <p className="text-xs text-gray-400 mt-0.5">{count} response{count !== 1 ? 's' : ''}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setEditingId(pc.id); setShowCreateForm(false) }}
+                    className="text-xs font-semibold px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-600 hover:border-brand-purple hover:text-brand-purple transition-all">
+                    Edit
+                  </button>
+                  <button onClick={() => activatePulse(pc.id)} disabled={isActive}
+                    className={`text-xs font-semibold px-4 py-2 rounded-lg transition-all ${
+                      isActive ? 'bg-brand-light text-brand-purple cursor-default' : 'bg-brand-purple text-white hover:bg-opacity-90'
+                    }`}>
+                    {isActive ? 'Active' : 'Activate'}
+                  </button>
+                </div>
               </div>
-              <button onClick={() => activatePulse(pc.id)} disabled={isActive}
-                className={`text-xs font-semibold px-4 py-2 rounded-lg transition-all ${
-                  isActive ? 'bg-brand-light text-brand-purple cursor-default' : 'bg-brand-purple text-white hover:bg-opacity-90'
-                }`}>
-                {isActive ? 'Active' : 'Activate'}
-              </button>
             </div>
           )
         })}
@@ -392,7 +569,9 @@ export default function AdminPage() {
         {hasMore && (
           <button onClick={() => setShowAll((v) => !v)}
             className="w-full py-2.5 text-xs text-gray-400 hover:text-brand-purple border border-gray-200 rounded-xl hover:border-brand-purple transition-all">
-            {showAll ? '↑ Show fewer surveys' : `↓ Show ${sortedPulseChecks.length - 4} more survey${sortedPulseChecks.length - 4 !== 1 ? 's' : ''}`}
+            {showAll
+              ? '↑ Show fewer surveys'
+              : `↓ Show ${sortedPulseChecks.length - 4} more survey${sortedPulseChecks.length - 4 !== 1 ? 's' : ''}`}
           </button>
         )}
 
@@ -410,7 +589,9 @@ export default function AdminPage() {
       </div>
 
       {message && (
-        <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-xl mb-6">{message}</div>
+        <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-xl mb-6">
+          {message}
+        </div>
       )}
 
       {/* Response bar chart */}
@@ -435,7 +616,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Create new pulse check */}
+      {/* Create new survey */}
       <div className="border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden">
         <button onClick={() => setShowCreateForm((v) => !v)}
           className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-all">
@@ -451,7 +632,7 @@ export default function AdminPage() {
               <CreatePulseCheckForm
                 adminKey={key}
                 onCreated={(id) => {
-                  setMessage(`Pulse Check created (ID: ${id}). You can now activate it above.`)
+                  setMessage(`Survey created (ID: ${id}). You can now activate it above.`)
                   setShowCreateForm(false)
                   fetchStats(key)
                 }}
