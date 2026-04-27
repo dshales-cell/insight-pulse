@@ -420,12 +420,8 @@ export default function AdminPage() {
     return () => clearInterval(interval)
   }, [authed, key, fetchStats])
 
-  // Sort: active first, then by id descending
-  const sortedPulseChecks = [...(stats?.pulseChecks || [])].sort((a, b) => {
-    if (a.id === stats?.activePulseCheck) return -1
-    if (b.id === stats?.activePulseCheck) return 1
-    return b.id - a.id
-  })
+  // Sort by id ascending (1, 2, 3, 4…) — natural numerical order
+  const sortedPulseChecks = [...(stats?.pulseChecks || [])].sort((a, b) => a.id - b.id)
   const visiblePulseChecks = showAll ? sortedPulseChecks : sortedPulseChecks.slice(0, 4)
   const hasMore = sortedPulseChecks.length > 4
 
@@ -554,12 +550,17 @@ export default function AdminPage() {
                     className="text-xs font-semibold px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-600 hover:border-brand-purple hover:text-brand-purple transition-all">
                     Edit
                   </button>
-                  <button onClick={() => activatePulse(pc.id)} disabled={isActive}
-                    className={`text-xs font-semibold px-4 py-2 rounded-lg transition-all ${
-                      isActive ? 'bg-brand-light text-brand-purple cursor-default' : 'bg-brand-purple text-white hover:bg-opacity-90'
-                    }`}>
-                    {isActive ? 'Active' : 'Activate'}
-                  </button>
+                  {isActive ? (
+                    <button onClick={() => activatePulse(0)}
+                      className="text-xs font-semibold px-4 py-2 rounded-lg transition-all bg-red-50 text-red-500 border-2 border-red-200 hover:bg-red-100">
+                      Deactivate
+                    </button>
+                  ) : (
+                    <button onClick={() => activatePulse(pc.id)}
+                      className="text-xs font-semibold px-4 py-2 rounded-lg transition-all bg-brand-purple text-white hover:bg-opacity-90">
+                      Activate
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -575,17 +576,6 @@ export default function AdminPage() {
           </button>
         )}
 
-        {/* Close survey */}
-        <div className="bg-white border-2 border-gray-200 rounded-xl p-4 flex items-center justify-between">
-          <div>
-            <span className="text-sm font-semibold text-gray-700">Close survey</span>
-            <p className="text-xs text-gray-400 mt-0.5">No survey will be shown to visitors</p>
-          </div>
-          <button onClick={() => activatePulse(0)} disabled={!stats?.activePulseCheck}
-            className="text-xs font-semibold px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 transition-all">
-            Close
-          </button>
-        </div>
       </div>
 
       {message && (
