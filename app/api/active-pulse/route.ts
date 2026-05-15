@@ -5,6 +5,9 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+// Always fetch live data — never cache this response
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const { data: setting } = await supabase
     .from('settings')
@@ -13,7 +16,7 @@ export async function GET() {
     .single()
 
   if (!setting || setting.value === '0') {
-    return NextResponse.json({ activePulseCheck: null })
+    return NextResponse.json({ activePulseCheck: null }, { headers: { 'Cache-Control': 'no-store' } })
   }
 
   const id = Number(setting.value)
@@ -25,7 +28,7 @@ export async function GET() {
     .single()
 
   if (!pc) {
-    return NextResponse.json({ activePulseCheck: null })
+    return NextResponse.json({ activePulseCheck: null }, { headers: { 'Cache-Control': 'no-store' } })
   }
 
   const { data: questions } = await supabase
@@ -34,20 +37,23 @@ export async function GET() {
     .eq('pulse_check_id', id)
     .order('sort_order')
 
-  return NextResponse.json({
-    activePulseCheck: {
-      id: pc.id,
-      title: pc.title,
-      subtitle: pc.subtitle,
-      intro: pc.intro,
-      questions: (questions || []).map((q) => ({
-        id: q.id,
-        label: q.label,
-        text: q.question_text,
-        type: q.question_type,
-        options: q.options,
-        required: q.required,
-      })),
+  return NextResponse.json(
+    {
+      activePulseCheck: {
+        id: pc.id,
+        title: pc.title,
+        subtitle: pc.subtitle,
+        intro: pc.intro,
+        questions: (questions || []).map((q) => ({
+          id: q.id,
+          label: q.label,
+          text: q.question_text,
+          type: q.question_type,
+          options: q.options,
+          required: q.required,
+        })),
+      },
     },
-  })
+    { headers: { 'Cache-Control': 'no-store' } }
+  )
 }
