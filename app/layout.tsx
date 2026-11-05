@@ -5,6 +5,13 @@ export const metadata: Metadata = {
   title: "Insight Pulse | Women's Health World",
   description:
     "We run regular surveys to build a global picture of women's health and wellbeing — and create a mandate for change.",
+  icons: {
+    icon: [
+      { url: 'https://womenshealth.world/wp-content/uploads/2026/10/cropped-WHW-logo-mark-transparent-32x32.png', sizes: '32x32' },
+      { url: 'https://womenshealth.world/wp-content/uploads/2026/10/cropped-WHW-logo-mark-transparent-192x192.png', sizes: '192x192' },
+    ],
+    apple: 'https://womenshealth.world/wp-content/uploads/2026/10/cropped-WHW-logo-mark-transparent-180x180.png',
+  },
   openGraph: {
     title: "Insight Pulse | Women's Health World",
     description: "Share your voice. Shape the future of women's health.",
