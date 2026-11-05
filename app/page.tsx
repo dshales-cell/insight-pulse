@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import ShareButtons from './ShareButtons'
 
 interface PulseCheck {
   id: number
@@ -160,8 +161,10 @@ export default function HomePage() {
         </div>
       )}
 
+      <ShareButtons className="mt-8" />
+
       {/* ── Newsletter Signup ── */}
-      <div id="newsletter" className="mt-12 bg-gradient-to-r from-brand-purple to-purple-800 rounded-2xl p-8 text-white">
+      <div id="newsletter" className="mt-8 bg-gradient-to-r from-brand-purple to-purple-800 rounded-2xl p-8 text-white">
         <div className="text-center mb-6">
           <h3 className="text-xl font-bold mb-2">Stay informed</h3>
           <p className="text-purple-200 text-sm">

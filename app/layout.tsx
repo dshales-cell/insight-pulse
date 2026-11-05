@@ -13,10 +13,10 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: 'https://pulse.womenshealth.world/og-image.jpg',
+        url: 'https://womenshealth.world/wp-content/uploads/2026/10/WHW-Brand-image-1200-x-675-px.png',
         width: 1200,
-        height: 630,
-        alt: "Insight Pulse — Women's Health World survey",
+        height: 675,
+        alt: "Women's Health World",
       },
     ],
   },
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: "Insight Pulse | Women's Health World",
     description: "Share your voice. Shape the future of women's health.",
-    images: ['https://pulse.womenshealth.world/og-image.jpg'],
+    images: ['https://womenshealth.world/wp-content/uploads/2026/10/WHW-Brand-image-1200-x-675-px.png'],
   },
 }
 

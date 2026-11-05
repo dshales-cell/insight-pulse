@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import ShareButtons from '../ShareButtons'
 
 function ThankYouContent() {
   const params = useSearchParams()
@@ -68,6 +69,8 @@ function ThankYouContent() {
           </ul>
         </div>
       )}
+
+      <ShareButtons className="mb-10" />
 
       {/* Newsletter signup */}
       <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm text-left">
